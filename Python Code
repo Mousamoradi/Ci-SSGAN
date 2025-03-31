@@ -1,1 +1,123 @@
+import torch
+from huggingface_hub import hf_hub_download
+from transformers import AutoTokenizer, AutoModel, DistilBertModel
+import torch
+import torch.nn as nn
+from peft import LoraConfig
 
+# Check for GPU availability, use GPU if available, else CPU
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+print(f"Using device: {device}")
+
+# Define Hugging Face repo
+repo_id = "mousamoradi/SGANLLM"
+
+# Download the Generator Model's weights (state_dict)
+generator_model_path = hf_hub_download(repo_id=repo_id, filename="final_sgan_generator_multi.pt")
+# Download the Discriminator Model's weights (state_dict)
+discriminator_model_path = hf_hub_download(repo_id=repo_id, filename="final_sgan_discriminator_multi.pt")
+####################################### Apply PEFT for fine-tuning ##############################################
+config = LoraConfig(
+    r=64,
+    lora_alpha=128,   #default=2
+    bias="all",
+    lora_dropout=0.2,   #default=0.2
+    task_type="SEQ_CLS",
+    target_modules=[
+        "embedding",
+        "*.attention.q_lin",
+        "*.attention.k_lin",
+        "*.attention.v_lin",
+        "*.attention.out_lin",
+        "*.ffn.lin*",
+        "pre_classifier",
+        "classifier",
+    ],
+)
+
+model =  DistilBertForSequenceClassification.from_pretrained("medicalai/ClinicalBERT", num_labels=6, output_hidden_states=True)
+# Initialize the tokenizer
+print_trainable_parameters(model)
+
+model = get_peft_model(model, config)
+model.print_trainable_parameters()
+############################################ Define Descriminator and Generator #########################################
+class Discriminator(nn.Module):
+    def __init__(self, model, num_classes=6):
+        super(Discriminator, self).__init__()
+        self.bert = model
+        self.fc = nn.Linear(num_classes + 1, num_classes)
+
+    def forward(self, input_ids, attention_mask, embeddings=None):
+        if embeddings is None:
+            embeddings = self.bert.get_input_embeddings()(input_ids)
+        
+        # Forward pass through the BERT model with the embeddings
+        outputs = self.bert(inputs_embeds=embeddings, attention_mask=attention_mask)
+        logits = outputs.logits
+
+        return logits
+
+    def get_embeddings(self, input_ids):
+        return self.bert.get_input_embeddings()(input_ids)
+
+# Generator: Use a language model like BERT for generating text based on input
+class Generator(nn.Module):
+    def __init__(self, model):
+        super(Generator, self).__init__()
+        self.bert = model  # Use DistilBertForSequenceClassification
+    
+    def forward(self, input_ids, attention_mask=None):
+        outputs = self.bert(input_ids=input_ids, attention_mask=attention_mask)
+        return outputs[0]  # The first element of the output tuple is the logits
+
+############################################# Training parameters ##########################################
+# Initialize generator and discriminator models and move them to the selected device (GPU or CPU)
+generator = Generator(model).to(device)
+discriminator = Discriminator(model, num_classes=6).to(device)
+batch_size =8
+# Load the state_dict (weights) into the models
+generator.load_state_dict(torch.load(generator_model_path, map_location=device))
+discriminator.load_state_dict(torch.load(discriminator_model_path, map_location=device))
+
+# Ensure the models are in evaluation mode
+generator.eval()
+discriminator.eval()
+
+print("Models downloaded and loaded successfully!")
+
+# Convert test dataset to lists for consistent indexing
+input_txt_list = list(test_dataset['input_txt'])  # Note texts
+mrn_list = list(map(int, test_dataset['MRN']))  # Convert MRN to int
+
+# Initialize list to store predictions
+predicted_labels = []
+
+# Ensure to move the batch data to the correct device (GPU or CPU)
+with torch.no_grad():
+    for batch_idx, batch in enumerate(labeled_dataloader_test):
+        input_ids = batch['input_ids'].to(device)
+        attention_mask = batch['attention_mask'].to(device)
+
+        # Get model predictions
+        outputs = discriminator(input_ids, attention_mask=attention_mask)
+        preds = torch.softmax(outputs, dim=-1).cpu().numpy()  # Softmax output for multi-class
+
+        # Retrieve batch indices
+        batch_start = batch_idx * batch_size
+        batch_end = batch_start + len(batch['input_ids'])  # Adjust for last batch size
+
+        # Assign predicted labels as integers
+        for i, idx in enumerate(range(batch_start, batch_end)):
+            pred_label = int(np.argmax(preds[i]))  # Convert prediction to int
+            predicted_labels.append(pred_label)
+
+# Create DataFrame with integer values
+prediction_df = pd.DataFrame({
+    'MRN': mrn_list,  # Already converted to int
+    'note_txt': input_txt_list,
+    'predicted_label': predicted_labels   # Stored as int
+})
+
+# Print first few rows to verify results
+prediction_df
