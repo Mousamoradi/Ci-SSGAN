@@ -1,7 +1,12 @@
 # SGANLLM
 This repository focuses on detecting glaucoma subtypes from unstructured clinical notes using a Semi-Supervised Generative Adversarial Network and a Large Language Model (SGAN-LLM). The current version of SGAN_LLM can detect 6 glaucoma classes as below:
 
-'Non-GL', 'POAG','PACG','PXG','PDG','SGL' --> 'Non-glaucoma', 'Primary open angle glaucoma', 'Primary angle closure glaucoma', 'Pseudoexfoliation  glaucoma', 'Pigmentary dispersion glaucoma', 'Secondary glaucoma'. 
+'Non-GL': 'Non-glaucoma',
+'POAG': 'Primary open angle glaucoma',
+'PACG': 'Primary angle closure glaucoma',
+'PXG': 'Pseudoexfoliation  glaucoma',
+'PDG':'Pigmentary dispersion glaucoma',
+'SGL': 'Secondary glaucoma'
  
 
 # How to execute the model:
