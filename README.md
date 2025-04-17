@@ -18,7 +18,7 @@ This repository focuses on detecting glaucoma subtypes from unstructured clinica
 1. **Preprocessing**: Clean and normalize clinical text.
 2. **Tokenization**: HuggingFace tokenizer with stopword removal.
 3. **LoRA Fine-Tuning**: PEFT applied to ClinicalBERT.
-4. **Prediction**: Trained SGAN_LLM inference with softmax class probabilities.
+4. **Prediction**: Trained SGAN-LLM inference with softmax class probabilities.
 5. **Output**: Predicted class + probabilities for each MRN.
 
 # How to execute the model:
