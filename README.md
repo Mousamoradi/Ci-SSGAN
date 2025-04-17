@@ -1,5 +1,8 @@
 # SGANLLM
-This repository focuses on detecting glaucoma subtypes from unstructured clinical notes using a Semi-Supervised Generative Adversarial Network and a Large Language Model (SGAN-LLM).
+This repository focuses on detecting glaucoma subtypes from unstructured clinical notes using a Semi-Supervised Generative Adversarial Network and a Large Language Model (SGAN-LLM). The current version of SGAN_LLM can detect 6 glaucoma classes as below:
+
+'Non-GL', 'POAG','PACG','PXG','PDG','SGL' --> 'Non-glaucoma', 'Primary open angle glaucoma', 'Primary angle closure glaucoma', 'Pseudoexfoliation  glaucoma', 'Pigmentary dispersion glaucoma', 'Secondary glaucoma'. 
+ 
 
 # How to execute the model:
 Users should ensure they have all the necessary libraries and dependencies installed, as specified in the "Requirements". Once intalled, the code can be executed in two easy steps:
