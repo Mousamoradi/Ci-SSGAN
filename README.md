@@ -12,7 +12,6 @@ This repository focuses on detecting glaucoma subtypes from unstructured clinica
 'PDG':'Pigmentary dispersion glaucoma',
 
 'SGL': 'Secondary glaucoma'
- 
 
 # How to execute the model:
 Users should ensure they have all the necessary libraries and dependencies installed, as specified in the "Requirements". Once intalled, the code can be executed in two easy steps:
