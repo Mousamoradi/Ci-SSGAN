@@ -13,6 +13,14 @@ This repository focuses on detecting glaucoma subtypes from unstructured clinica
 
 'SGL': 'Secondary glaucoma'
 
+# Workflow
+
+1. **Preprocessing**: Clean and normalize clinical text.
+2. **Tokenization**: HuggingFace tokenizer with stopword removal.
+3. **LoRA Fine-Tuning**: PEFT applied to ClinicalBERT.
+4. **Prediction**: Trained SGANLLM inference with softmax class probabilities.
+5. **Output**: Predicted class + probabilities for each MRN.
+
 # How to execute the model:
 Users should ensure they have all the necessary libraries and dependencies installed, as specified in the "Requirements". Once intalled, the code can be executed in two easy steps:
 
