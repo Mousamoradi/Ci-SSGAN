@@ -1,9 +1,125 @@
+#########Step 0: Import Necessary Libabries/modules and dependencies
+import nltk
+from nltk.corpus import stopwords
+from transformers import logging, AutoTokenizer, AutoModelForSequenceClassification,, AutoModel, DistilBertModel,DistilBertForSequenceClassification
+import re
+from datasets import Dataset
+from torch.utils.data import DataLoader, random_split
 import torch
 from huggingface_hub import hf_hub_download
-from transformers import AutoTokenizer, AutoModel, DistilBertModel
-import torch
 import torch.nn as nn
-from peft import LoraConfig
+import pandas as pd
+import numpy as np
+from peft import LoraConfig, get_peft_model
+logging.set_verbosity_error()  # suppress everything below .error
+import warnings
+warnings.filterwarnings("ignore", category=FutureWarning)
+###########Step 1: Loading dataset #############################################################################
+# Assuming the data in already loaded as org_data and it has 'MRN' and 'note_txt' columns..... Please rename columns if they are not in correct format
+###########Step 2: Pre-processing notes: Stopword removal #####################################################
+# Download stopwords if not already downloaded
+nltk.download('stopwords')
+# Define stopwords
+stop_words = set(stopwords.words('english'))
+custom_stop_words = {"a", "all", "also", "an", "and", "are", "as", "at", "be", "been", "by", "for", "from", "had", "has", "have", "in", "is", "it", "may", "of", "on", "or", "our", "than", "that", "the", "there", "these", "this", "to", "was", "we", "were", "which", "who", "with", "?", "."}
+stop_words.update(custom_stop_words)
+
+# Initialize the tokenizer
+tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
+# tokenizer = AutoTokenizer.from_pretrained("emilyalsentzer/Bio_ClinicalBERT")
+
+# Preprocess text function
+def preprocess_text(text):
+    if isinstance(text, str):  # Check if text is a string
+        # Convert to lowercase
+        text = text.lower()
+        # Remove stopwords
+        text = ' '.join([word for word in text.split() if word not in stop_words])
+        return text
+    return ''  # Return an empty string for non-string values
+
+# Apply preprocessing to the 'input' column in each dataset
+org_data['note_txt'] = org_data['note_txt'].apply(preprocess_text)
+
+##########Step 3: Pre-processing notes: Note cleaning ##################################################
+def clean_text(text):
+    # Remove specific names like "b. miller md" or "j. doe phd"
+    text = re.sub(r'\b[A-Z]\.\s*[a-z]+\s+[a-z]+\s*(?:md|phd|dr|prof|mr|mrs|ms|sir|esq)\b', '[NAME]', text, flags=re.IGNORECASE)
+    
+    # Replace sequences of digits (assuming MRNs)
+    text = re.sub(r"\b\d{6,}\b", "[MRN]", text)
+    
+    # Remove specific unwanted characters (e.g., ÃƒÂ¿)
+    text = re.sub(r'ÃƒÂ¿', '', text)
+    text = re.sub(r'ã¿', '', text)
+    text = re.sub(r'y', '', text)
+    text = re.sub(r'o', '', text)
+    text = re.sub(r'b. miller md', '', text)
+
+    # Replace dates in MM/DD/YY format
+    text = re.sub(r'\b\d{1,2}/\d{1,2}/\d{2,4}\b', '[DATE]', text)
+    
+    # Remove doctor's names at the end of sentences
+    text = re.sub(r'\bdr\.\s*[a-zA-Z]+\s*\.$', '', text, flags=re.IGNORECASE)
+    
+    # Normalize text
+    text = text.lower().strip()
+    
+    # Remove special characters
+    text = re.sub(r"\*+", " ", text)   # Replace multiple asterisks with a space
+    text = re.sub(r'[\/\(\)]', '', text)  # Remove slashes and parentheses
+    text = re.sub(r'\s+', ' ', text).strip()  # Normalize whitespace
+
+    return text
+
+org_data['note_txt'] = org_data['note_txt'].apply(clean_text)
+# print(org_data['note_txt'])
+
+##########Step 4: # Convert data to HuggingFace Datasets ######################################
+columns_to_keep = ['MRN', 'note_txt']
+
+org_dataset = Dataset.from_pandas(org_data[columns_to_keep])
+
+
+# Remove '__index_level_0__' from each dataset if it exists
+if "__index_level_0__" in org_dataset.column_names:
+    org_dataset = org_dataset.remove_columns("__index_level_0__")
+
+##########Step 5: Tokenize the notes ###################################################
+# Function to tokenize 'input_txt' and pass 'race' separately
+def tokenize_input(example):
+    # Tokenize the 'input_txt' (notes)
+    result = tokenizer(
+        example["note_txt"], truncation=True, max_length=512, padding="max_length"
+    )
+    
+    return result
+
+# Tokenize input and encode output for labeled datasets
+org_dataset = org_dataset.map(tokenize_input)
+
+# Ensure the datasets are in the correct format
+columns_to_return = ["MRN", "input_ids", "attention_mask"]
+org_dataset.set_format(type="torch", columns=columns_to_return)
+
+###########Step 6: Make DataLoaders to be in the model's format
+labeled_dataloader_test = DataLoader(org_dataset, batch_size=8, shuffle=False)
+
+###########Step 7: Model Execution and Prediction #######################################
+def print_trainable_parameters(model):
+    """
+    Prints the number of trainable parameters in the model.
+    """
+    trainable_params = 0
+    all_param = 0
+    for _, param in model.named_parameters():
+        all_param += param.numel()
+        if param.requires_grad:
+            trainable_params += param.numel()
+    print(
+        f"trainable params: {trainable_params} || all params: {all_param} || trainable%: {100 * trainable_params / all_param}"
+    )
+
 
 # Check for GPU availability, use GPU if available, else CPU
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -76,9 +192,10 @@ class Generator(nn.Module):
 generator = Generator(model).to(device)
 discriminator = Discriminator(model, num_classes=6).to(device)
 batch_size =8
-# Load the state_dict (weights) into the models
-generator.load_state_dict(torch.load(generator_model_path, map_location=device))
-discriminator.load_state_dict(torch.load(discriminator_model_path, map_location=device))
+
+generator.load_state_dict(torch.load(generator_model_path, map_location=device, weights_only=False))
+discriminator.load_state_dict(torch.load(discriminator_model_path, map_location=device, weights_only=False))
+
 
 # Ensure the models are in evaluation mode
 generator.eval()
@@ -87,11 +204,12 @@ discriminator.eval()
 print("Models downloaded and loaded successfully!")
 
 # Convert test dataset to lists for consistent indexing
-input_txt_list = list(test_dataset['input_txt'])  # Note texts
-mrn_list = list(map(int, test_dataset['MRN']))  # Convert MRN to int
+input_txt_list = list(mgb_dataset['note_txt'])  # Note texts
+mrn_list = list(map(int, mgb_dataset['MRN']))  # Convert MRN to int
 
 # Initialize list to store predictions
 predicted_labels = []
+predicted_probs = []
 
 # Ensure to move the batch data to the correct device (GPU or CPU)
 with torch.no_grad():
@@ -109,15 +227,37 @@ with torch.no_grad():
 
         # Assign predicted labels as integers
         for i, idx in enumerate(range(batch_start, batch_end)):
-            pred_label = int(np.argmax(preds[i]))  # Convert prediction to int
+            pred_label = int(np.argmax(preds[i]))
             predicted_labels.append(pred_label)
+            predicted_probs.append(preds[i])  # store the full softmax probability vector
+
 
 # Create DataFrame with integer values
-prediction_df = pd.DataFrame({
+result_df = pd.DataFrame({
     'MRN': mrn_list,  # Already converted to int
     'note_txt': input_txt_list,
-    'predicted_label': predicted_labels   # Stored as int
+    'predicted_label': predicted_labels  # Stored as int
 })
 
+# Define mapping from class index to class name
+label_map = {
+    0: 'Non-GL',
+    1: 'POAG',
+    2: 'PACG',
+    3: 'PXG',
+    4: 'PDG',
+    5: 'SGL'
+}
+
+# Add a column for the class name
+result_df["predicted_class"] = result_df["predicted_label"].map(label_map)
+# Convert the list of probability vectors to a numpy array
+probs_array = np.array(predicted_probs)
+
+# Prepare column names for each class's probability
+prob_cols = [f'prob_class_{i}' for i in range(probs_array.shape[1])]
+for i, col in enumerate(prob_cols):
+    result_df[col] = probs_array[:, i]
+        
 # Print first few rows to verify results
-prediction_df
+result_df
