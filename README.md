@@ -3,13 +3,13 @@ This repository focuses on detecting glaucoma subtypes from unstructured clinica
 
 7 classes = {
 
-    0: 'Non-GL', --> *Non-glaucoma*
-    1: 'POAG', --> *Primary open angle glaucoma*
-    2: 'POAS', --> *Primary open angle Suspect*
-    3: 'PACG', --> *Primary angle closure glaucoma*
-    4: 'XFG', --> *Pseudoexfoliation  glaucoma*
-    5: 'PDG', --> *Pigmentary dispersion glaucoma*
-    6: 'SGL' --> *Secondary glaucoma*
+    0: 'Non-GL', --> Non-glaucoma
+    1: 'POAG', --> Primary open angle glaucoma
+    2: 'POAS', --> Primary open angle Suspect
+    3: 'PACG', --> Primary angle closure glaucoma
+    4: 'XFG', --> Pseudoexfoliation  glaucoma
+    5: 'PDG', --> Pigmentary dispersion glaucoma
+    6: 'SGL' --> Secondary glaucoma
 }
 
 # Workflow
