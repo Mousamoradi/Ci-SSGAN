@@ -258,5 +258,7 @@ prob_cols = [f'prob_class_{i}' for i in range(probs_array.shape[1])]
 for i, col in enumerate(prob_cols):
     result_df[col] = probs_array[:, i]
         
-# Print first few rows to verify results
+# Print final dataset to verify results
 result_df
+# Optionally save the final results
+# result_df.to_csv(".../LLM_multi_class_predictions.csv", index=False)
