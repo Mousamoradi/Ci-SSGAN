@@ -25,8 +25,7 @@ custom_stop_words = {"a", "all", "also", "an", "and", "are", "as", "at", "be", "
 stop_words.update(custom_stop_words)
 
 # Initialize the tokenizer
-tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
-# tokenizer = AutoTokenizer.from_pretrained("emilyalsentzer/Bio_ClinicalBERT")
+tokenizer = AutoTokenizer.from_pretrained("emilyalsentzer/Bio_ClinicalBERT")
 
 # Preprocess text function
 def preprocess_text(text):
@@ -121,6 +120,7 @@ def print_trainable_parameters(model):
     )
 
 
+num_class=7
 # Check for GPU availability, use GPU if available, else CPU
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(f"Using device: {device}")
@@ -129,9 +129,9 @@ print(f"Using device: {device}")
 repo_id = "mousamoradi/SGANLLM"
 
 # Download the Generator Model's weights (state_dict)
-generator_model_path = hf_hub_download(repo_id=repo_id, filename="final_sgan_generator_multi.pt")
+generator_model_path = hf_hub_download(repo_id=repo_id, filename="generator_multi_class.pt")
 # Download the Discriminator Model's weights (state_dict)
-discriminator_model_path = hf_hub_download(repo_id=repo_id, filename="final_sgan_discriminator_multi.pt")
+discriminator_model_path = hf_hub_download(repo_id=repo_id, filename="discriminator_multi_class.pt")
 ####################################### Apply PEFT for fine-tuning ##############################################
 config = LoraConfig(
     r=64,
@@ -151,15 +151,15 @@ config = LoraConfig(
     ],
 )
 
-model =  DistilBertForSequenceClassification.from_pretrained("medicalai/ClinicalBERT", num_labels=6, output_hidden_states=True)
+model =  DistilBertForSequenceClassification.from_pretrained("medicalai/ClinicalBERT", num_labels=num_class, output_hidden_states=True)
 # Initialize the tokenizer
 print_trainable_parameters(model)
 
-model = get_peft_model(model, config)
-model.print_trainable_parameters()
+# model = get_peft_model(model, config)
+# model.print_trainable_parameters()
 ############################################ Define Descriminator and Generator #########################################
 class Discriminator(nn.Module):
-    def __init__(self, model, num_classes=6):
+    def __init__(self, model, num_classes=num_class):
         super(Discriminator, self).__init__()
         self.bert = model
         self.fc = nn.Linear(num_classes + 1, num_classes)
@@ -190,7 +190,7 @@ class Generator(nn.Module):
 ############################################# Training parameters ##########################################
 # Initialize generator and discriminator models and move them to the selected device (GPU or CPU)
 generator = Generator(model).to(device)
-discriminator = Discriminator(model, num_classes=6).to(device)
+discriminator = Discriminator(model, num_classes=num_class).to(device)
 batch_size =8
 
 generator.load_state_dict(torch.load(generator_model_path, map_location=device, weights_only=False))
@@ -204,8 +204,8 @@ discriminator.eval()
 print("Models downloaded and loaded successfully!")
 
 # Convert test dataset to lists for consistent indexing
-input_txt_list = list(mgb_dataset['note_txt'])  # Note texts
-mrn_list = list(map(int, mgb_dataset['MRN']))  # Convert MRN to int
+input_txt_list = list(org_dataset['note_txt'])  # Note texts
+mrn_list = list(map(int, org_dataset['MRN']))  # Convert MRN to int
 
 # Initialize list to store predictions
 predicted_labels = []
@@ -231,7 +231,6 @@ with torch.no_grad():
             predicted_labels.append(pred_label)
             predicted_probs.append(preds[i])  # store the full softmax probability vector
 
-
 # Create DataFrame with integer values
 result_df = pd.DataFrame({
     'MRN': mrn_list,  # Already converted to int
@@ -239,14 +238,14 @@ result_df = pd.DataFrame({
     'predicted_label': predicted_labels  # Stored as int
 })
 
-# Define mapping from class index to class name
 label_map = {
     0: 'Non-GL',
     1: 'POAG',
-    2: 'PACG',
-    3: 'PXG',
-    4: 'PDG',
-    5: 'SGL'
+    2: 'POAS',
+    3: 'PACG',
+    4: 'XFG',
+    5: 'PDG',
+    6: 'SGL'
 }
 
 # Add a column for the class name
