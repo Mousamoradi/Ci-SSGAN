@@ -3,12 +3,12 @@ This repository focuses on detecting glaucoma subtypes from unstructured clinica
 
 6 classes = {
 
-    0: 'Non-GL', --> Non-glaucoma
+    0: 'Non-GL', --> non-glaucoma
     1: 'OAG/S', --> open angle glaucoma or suspect
     2: 'ACG/S', --> angle closure glaucoma or suspect
     3: 'XFG/S', --> exfoliation glaucoma or syndrome
     4: 'PDG', --> pigmentary dispersion glaucoma or suspect
-    5: 'SGL' --> Secondary glaucoma
+    5: 'SGL' --> secondary glaucoma
 }
 
 # Workflow
