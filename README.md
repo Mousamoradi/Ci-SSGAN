@@ -44,6 +44,7 @@ Your data should be a CSV/DataFrame with the following columns:
 | race | Optional | Int | Race category (0-2) | 1 |
 | gender | Optional | Int | Gender (0=F, 1=M) | 0 |
 | age | Optional | Float | Age in years | 65.5 |
+**Note:** Demographics (age, race, gender) are optional but may improve prediction accuracy if provided.
 
 # How to execute the model:
 Users should ensure they have all the necessary libraries and dependencies installed, as specified in the "Requirements". Once intalled, the code can be executed in two easy steps:
@@ -74,13 +75,13 @@ pip install -r requirements.txt
 from ci_ssgan_inference import CiSSGANPredictor
 
 # Load model (automatically downloads weights on first run)
-predictor = CiSSGANPredictor(model_variant='100p')  # or '25p'
+predictor = run_inference(test_data, model_variant='100p')  # or '25p'
 
 # Prepare your data
 import pandas as pd
 data = pd.read_csv('your_clinical_notes.csv')
-# Minimum columns required: 'MRN', 'note_txt'
+# Minimum columns required: 'MRN', 'input_txt'
 
 # Get predictions
 predictions = predictor.predict(data)
-print(predictions[['MRN', 'predicted_class', 'confidence']])
+print(predictions[['MRN', 'predicted_subtype', 'Probability']])
