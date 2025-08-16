@@ -19,7 +19,7 @@ We provide two pre-trained Ci-SSGAN models which can serve for different centers
 | `ci_ssgan_25p` | 25% labeled | Different clinical domains, better generalization | F1: 0.88 |
 | `ci_ssgan_100p` | 100% labeled | Maximum performance, similar domains | F1: 0.91 |
 
-### Selection Guidance:
+### Model selection guidance:
 - **Not sure?** Start with `100p` model
 - **Different hospital/EHR?** Try `25p` model  
 - **Small inference dataset?** Either model works (both handle any size)
