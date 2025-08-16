@@ -12,7 +12,7 @@ The model identifies 6 glaucoma subtypes from clinical notes:
 | 4 | PDG | Pigmentary dispersion glaucoma | 
 | 5 | SGL | Secondary glaucoma | 
 
-We provide two pre-trained Ci-SSGAN models:
+We provide two pre-trained Ci-SSGAN models which can serve for different centers/datatypes:
 
 | Model | Training Data | Best For | Validated performance |
 |-------|--------------|----------|-------------|
@@ -32,6 +32,24 @@ We provide two pre-trained Ci-SSGAN models:
 3. **Model Weights**: The pre-trained generator and discriminator weights are pulled from HuggingFace Hub via hf_hub_download
 4. **Prediction**: Trained Ci-SSGAN inference with softmax class probabilities.
 5. **Output**: Predicted class + probabilities for each MRN.
+
+### Input Format
+Your data should be a CSV/DataFrame with the following columns:
+
+| Column | Required | Type | Description | Example |
+|--------|----------|------|-------------|---------|
+| MRN | ✅ Yes | String | Patient identifier | "PAT001" |
+| note_txt | ✅ Yes | String | Clinical note text | "Patient presents with..." |
+| note_id | Optional | String | Note identifier | "NOTE123" |
+| race | Optional | Int | Race category (0-2) | 1 |
+| gender | Optional | Int | Gender (0=F, 1=M) | 0 |
+| age | Optional | Float | Age in years | 65.5 |
+
+### Example Input Data
+```csv
+MRN,note_txt
+PAT001,"67 yo male with elevated IOP, cupping noted on exam..."
+PAT002,"Follow-up for narrow angles, on pilocarpine..."
 
 # How to execute the model:
 Users should ensure they have all the necessary libraries and dependencies installed, as specified in the "Requirements". Once intalled, the code can be executed in two easy steps:
