@@ -86,9 +86,9 @@ results = run_inference(test_data, model_variant='100p', save_to_csv='prediction
 # View results
 print(results[['MRN', 'predicted_subtype', 'Probability', 'prob_{class}']])
 
-# License
+#License
 This project is licensed under the MIT License - see LICENSE file for details.
 
-# Contact
+#Contact
 Issues: Please open a GitHub issue for bugs or questions
 Email: mmoradi2@meei.harvard.edu
