@@ -39,7 +39,7 @@ Your data should be a CSV/DataFrame with the following columns:
 | Column | Required | Type | Description | Example |
 |--------|----------|------|-------------|---------|
 | MRN | ✅ Yes | String | Patient identifier | "PAT001" |
-| note_txt | ✅ Yes | String | Clinical note text | "Patient presents with..." |
+| input_txt | ✅ Yes | String | Clinical note text | "Patient presents with..." |
 | note_id | Optional | String | Note identifier | "NOTE123" |
 | race | Optional | Int | Race category (0-2) | 1 |
 | gender | Optional | Int | Gender (0=F, 1=M) | 0 |
@@ -49,7 +49,7 @@ Your data should be a CSV/DataFrame with the following columns:
 # How to execute the model:
 Users should ensure they have all the necessary libraries and dependencies installed, as specified in the "Requirements". Once intalled, the code can be executed in two easy steps:
 
-1) Model execution utilizes six input columns: ['MRN', 'note_id', 'note_txt', 'race', 'gender', 'age']. The minimum requirement consists of two mandatory columns: "MRN" and "note_txt". Column renaming is necessary if your dataset employs alternative naming conventions.
+1) Model execution utilizes six input columns: ['MRN', 'note_id', 'input_txt', 'race', 'gender', 'age']. The minimum requirement consists of two mandatory columns: "MRN" and "input_txt". Column renaming is necessary if your dataset employs alternative naming conventions.
 
 2) Download or copy the code from the "Python Code" into your environment. When executed, the code will automatically download the trained model weights and generate predictions for the notes.
 
