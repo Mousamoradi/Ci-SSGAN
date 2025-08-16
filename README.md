@@ -16,8 +16,8 @@ Two pre-trained Ci-SSGAN models are available to accommodate different clinical 
 
 | Model | Training Data | Best For | Validated performance (Internal dataset) |
 |-------|--------------|----------|-------------|
-| `ci_ssgan_25p` | 25% labeled | Different clinical domains, better generalization | F1: 0.88 |
-| `ci_ssgan_100p` | 100% labeled | Maximum performance, similar domains | F1: 0.91 |
+| `ci_ssgan_25p` | 25% labeled | Different clinical domains, better generalization | AUROC: 0.97, F1: 0.88 |
+| `ci_ssgan_100p` | 100% labeled | Maximum performance, similar domains | AUROC: 0.99, F1: 0.91 |
 
 ### Model selection guidance:
 - **Not sure?** Start with `100p` model
