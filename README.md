@@ -38,10 +38,9 @@ Users should ensure they have all the necessary libraries and dependencies insta
 1) Model execution utilizes six input columns: ['MRN', 'note_id', 'note_txt', 'race', 'gender', 'age']. The minimum requirement consists of two mandatory columns: "MRN" and "note_txt". Column renaming is necessary if your dataset employs alternative naming conventions.
 
 2) Download or copy the code from the "Python Code" into your environment. When executed, the code will automatically download the trained model weights and generate predictions for the notes.
-   
-```markdown
-## Installation
 
+### ** Installation:**
+```markdown
 ### Requirements
 - Python 3.8+
 - PyTorch 2.0+
@@ -54,6 +53,7 @@ cd Ci-SSGAN
 pip install -r requirements.txt
 
 ## Quick Start
+```python
 # Install requirements
 pip install -r requirements.txt
 
