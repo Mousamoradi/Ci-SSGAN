@@ -45,12 +45,6 @@ Your data should be a CSV/DataFrame with the following columns:
 | gender | Optional | Int | Gender (0=F, 1=M) | 0 |
 | age | Optional | Float | Age in years | 65.5 |
 
-### Example Input Data
-```csv
-MRN,note_txt
-PAT001,"67 yo male with elevated IOP, cupping noted on exam..."
-PAT002,"Follow-up for narrow angles, on pilocarpine..."
-
 # How to execute the model:
 Users should ensure they have all the necessary libraries and dependencies installed, as specified in the "Requirements". Once intalled, the code can be executed in two easy steps:
 
