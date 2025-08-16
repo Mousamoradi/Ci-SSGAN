@@ -14,7 +14,7 @@ The model identifies 6 glaucoma subtypes from clinical notes:
 
 Two pre-trained Ci-SSGAN models are available to accommodate different clinical settings and data characteristics:
 
-| Model | Training Data | Best For | Validated performance |
+| Model | Training Data | Best For | Validated performance (Internal dataset) |
 |-------|--------------|----------|-------------|
 | `ci_ssgan_25p` | 25% labeled | Different clinical domains, better generalization | F1: 0.88 |
 | `ci_ssgan_100p` | 100% labeled | Maximum performance, similar domains | F1: 0.91 |
