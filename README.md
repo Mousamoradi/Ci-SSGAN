@@ -1,15 +1,16 @@
 # Ci-SSGAN
-This repository focuses on detecting glaucoma subtypes from unstructured clinical notes using a clinically-informed semi-Supervised Generative Adversarial Network (Ci-SSGAN) and a Large Language Model. The current version of Ci-SSGAN can detect 6 glaucoma classes as below:
+This repository focuses on detecting glaucoma subtypes from unstructured clinical notes using a clinically-informed semi-Supervised Generative Adversarial Network (Ci-SSGAN) and a Large Language Model. 
 
-6 classes = {
+The model identifies 6 glaucoma subtypes from clinical notes:
 
-    0: 'Non-GL', --> non-glaucoma
-    1: 'OAG/S', --> open angle glaucoma or suspect
-    2: 'ACG/S', --> angle closure glaucoma or suspect
-    3: 'XFG/S', --> exfoliation glaucoma or syndrome
-    4: 'PDG', --> pigmentary dispersion glaucoma or suspect
-    5: 'SGL' --> secondary glaucoma
-}
+| Class | Label | Description | Clinical Significance |
+|-------|-------|-------------|----------------------|
+| 0 | Non-GL | Non-glaucoma | No glaucoma detected |
+| 1 | OAG/S | Open-angle glaucoma/suspect | 
+| 2 | ACG/S | Angle-closure glaucoma/suspect |
+| 3 | XFG/S | Exfoliation glaucoma/syndrome |
+| 4 | PDG | Pigmentary dispersion glaucoma | 
+| 5 | SGL | Secondary glaucoma | 
 
 We provide two pre-trained Ci-SSGAN models:
 
