@@ -25,13 +25,13 @@ Two pre-trained Ci-SSGAN models are available to accommodate different clinical 
 - **Small inference dataset?** Either model works (both handle any size)
 
   
-# Workflow
-
-1. **Preprocessing**: Clean and normalize clinical text.
-2. **Tokenization**: HuggingFace tokenizer with stopword removal.
-3. **Model Weights**: The pre-trained generator and discriminator weights are pulled from HuggingFace Hub via hf_hub_download
-4. **Prediction**: Trained Ci-SSGAN inference with softmax class probabilities.
-5. **Output**: Predicted class + probabilities for each MRN.
+## Workflow
+1. **Data Loading**: Load CSV/DataFrame with clinical notes (minimum: MRN, input_txt)
+2. **Model Download**: Pre-trained Ci-SSGAN weights (text encoder, generator, discriminator) automatically downloaded from HuggingFace Hub
+3. **Tokenization**: Bio-ClinicalBERT tokenizer processes text (truncation, padding to 512 tokens)
+4. **Encoding**: Text encoder generates 768-dimensional embeddings from clinical notes
+5. **Prediction**: Discriminator classifies embeddings into 6 glaucoma subtypes using softmax
+6. **Output**: Returns DataFrame with predicted subtype and confidence scores for each patient
 
 ### Input Format
 Your data should be a CSV/DataFrame with the following columns:
