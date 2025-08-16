@@ -1,8 +1,6 @@
-torch version: 2.5.1+cu124
-pandas version: 2.2.2
-numpy version: 1.26.4
-transformers version: 4.49.0
-huggingface_hub version: 0.29.3
-peft version: 0.11.1
-datasets version: 2.20.0
-nltk version: 3.8.1
+torch>=2.0.0
+pandas>=2.0.0
+numpy>=1.24.0
+transformers>=4.30.0
+huggingface-hub>=0.16.0
+tqdm>=4.65.0
