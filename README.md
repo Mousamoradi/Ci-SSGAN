@@ -12,7 +12,7 @@ The model identifies 6 glaucoma subtypes from clinical notes:
 | 4 | PDG | Pigmentary dispersion glaucoma | 
 | 5 | SGL | Secondary glaucoma | 
 
-We provide two pre-trained Ci-SSGAN models which can serve for different centers/datatypes:
+Two pre-trained Ci-SSGAN models are available to accommodate different clinical settings and data characteristics:
 
 | Model | Training Data | Best For | Validated performance |
 |-------|--------------|----------|-------------|
