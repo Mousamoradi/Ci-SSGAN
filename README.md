@@ -38,8 +38,8 @@ Users should ensure they have all the necessary libraries and dependencies insta
 1) Model execution utilizes six input columns: ['MRN', 'note_id', 'note_txt', 'race', 'gender', 'age']. The minimum requirement consists of two mandatory columns: "MRN" and "note_txt". Column renaming is necessary if your dataset employs alternative naming conventions.
 
 2) Download or copy the code from the "Python Code" into your environment. When executed, the code will automatically download the trained model weights and generate predictions for the notes.
-3) 
-## Installation Section:
+   
+```markdown
 ## Installation
 
 ### Requirements
@@ -48,6 +48,7 @@ Users should ensure they have all the necessary libraries and dependencies insta
 - CUDA 11.7+ (for GPU support, optional)
 
 ### Install via pip
+```bash
 git clone https://github.com/yourusername/Ci-SSGAN.git
 cd Ci-SSGAN
 pip install -r requirements.txt
