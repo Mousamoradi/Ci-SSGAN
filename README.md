@@ -13,9 +13,10 @@ This repository focuses on detecting glaucoma subtypes from unstructured clinica
 
 We provide two pre-trained Ci-SSGAN models:
 
-| `ci_ssgan_25p` | 25% labeled | Recommended if using different clinical domains | F1: 0.88 (note-level) |
-
-| `ci_ssgan_100p` | 100% labeled | Recommended if maximum performance needed | F1: 0.91 (note-level) |
+| Model | Training Data | Best For | Performance |
+|-------|--------------|----------|-------------|
+| `ci_ssgan_25p` | 25% labeled | Different clinical domains, better generalization | F1: 0.88 |
+| `ci_ssgan_100p` | 100% labeled | Maximum performance, similar domains | F1: 0.91 |
 
 ### Selection Guidance:
 - **Not sure?** Start with `100p` model
