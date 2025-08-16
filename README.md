@@ -9,7 +9,7 @@ The model identifies 6 glaucoma subtypes from clinical notes:
 | 1 | OAG/S | Open-angle glaucoma/suspect | 
 | 2 | ACG/S | Angle-closure glaucoma/suspect |
 | 3 | XFG/S | Exfoliation glaucoma/syndrome |
-| 4 | PDG | Pigmentary dispersion glaucoma | 
+| 4 | PDG/S | Pigmentary dispersion glaucoma/syndrome | 
 | 5 | SGL | Secondary glaucoma | 
 
 Two pre-trained Ci-SSGAN models are available to accommodate different clinical settings and data characteristics:
