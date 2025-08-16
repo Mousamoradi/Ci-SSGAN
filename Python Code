@@ -480,4 +480,4 @@ print("                   + detailed probabilities for each class")
 print("="*70 + "\n")
 
 # Example call (replace 'test_data' with your DataFrame):
-results = run_inference(test_set, model_variant='25p')
+results = run_inference(test_data, model_variant='25p')
