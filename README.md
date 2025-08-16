@@ -43,7 +43,7 @@ Users should ensure they have all the necessary libraries and dependencies insta
 ```markdown
 ### Requirements
 - Python 3.8+
-- PyTorch 2.0+
+- PyTorch 2.5.1+cu124
 - CUDA 11.7+ (for GPU support, optional)
 
 ### Install via pip
