@@ -22,6 +22,6 @@ This repository focuses on detecting glaucoma subtypes from unstructured clinica
 # How to execute the model:
 Users should ensure they have all the necessary libraries and dependencies installed, as specified in the "Requirements". Once intalled, the code can be executed in two easy steps:
 
-1) The model can be executed using ['MRN', 'note_id', 'note_txt', 'race', 'gender', 'age'] columns. If the data is not containing all these columns, ensure that your dataset includes at least two required columns: "MRN" and "note_txt". If your dataset uses different column names, please rename them accordingly before proceeding to the next steps.
+1) Model execution utilizes six input columns: ['MRN', 'note_id', 'note_txt', 'race', 'gender', 'age']. The minimum requirement consists of two mandatory columns: "MRN" and "note_txt". Column renaming is necessary if your dataset employs alternative naming conventions.
 
 2) Download or copy the code from the "Python Code" into your environment. When executed, the code will automatically download the trained model weights and generate predictions for the notes.
