@@ -1,264 +1,483 @@
-#########Step 0: Import Necessary Libabries/modules and dependencies
-import nltk
-from nltk.corpus import stopwords
-from transformers import logging, AutoTokenizer, AutoModelForSequenceClassification,, AutoModel, DistilBertModel,DistilBertForSequenceClassification
-import re
-from datasets import Dataset
-from torch.utils.data import DataLoader, random_split
+"""
+CI-SSGAN INFERENCE CODE
+Quick Usage:
+    results_df = run_inference(test_data, model_variant='100p')
+
+Classes:
+    0: Non-GL (Non-Glaucoma)
+    1: OAG/S (Open-Angle Glaucoma/Suspect)
+    2: ACG/S (Angle-Closure Glaucoma/Suspect)
+    3: XFG/S (Exfoliation Glaucoma/Suspect)
+    4: PDG/S (Pigmentary Dispersion Glaucoma/Suspect)
+    5: SGL (Secondary Glaucoma)
+"""
+
 import torch
-from huggingface_hub import hf_hub_download
 import torch.nn as nn
-import pandas as pd
+import torch.nn.functional as F
+from torch.utils.data import Dataset, DataLoader
 import numpy as np
-from peft import LoraConfig, get_peft_model
-logging.set_verbosity_error()  # suppress everything below .error
+import pandas as pd
+from transformers import AutoTokenizer, AutoModel
+from tqdm import tqdm
+import os
+from huggingface_hub import hf_hub_download
 import warnings
-warnings.filterwarnings("ignore", category=FutureWarning)
-###########Step 1: Loading dataset #############################################################################
-# Assuming the data in already loaded as org_data and it has 'MRN' and 'note_txt' columns..... Please rename columns if they are not in correct format
-###########Step 2: Pre-processing notes: Stopword removal #####################################################
-# Download stopwords if not already downloaded
-nltk.download('stopwords')
-# Define stopwords
-stop_words = set(stopwords.words('english'))
-custom_stop_words = {"a", "all", "also", "an", "and", "are", "as", "at", "be", "been", "by", "for", "from", "had", "has", "have", "in", "is", "it", "may", "of", "on", "or", "our", "than", "that", "the", "there", "these", "this", "to", "was", "we", "were", "which", "who", "with", "?", "."}
-stop_words.update(custom_stop_words)
+warnings.filterwarnings('ignore')
 
-# Initialize the tokenizer
-tokenizer = AutoTokenizer.from_pretrained("emilyalsentzer/Bio_ClinicalBERT")
+# ============================================================================
+# CONFIGURATION
+# ============================================================================
+DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+BATCH_SIZE = 16
+MAX_SEQ_LENGTH = 512
 
-# Preprocess text function
-def preprocess_text(text):
-    if isinstance(text, str):  # Check if text is a string
-        # Convert to lowercase
-        text = text.lower()
-        # Remove stopwords
-        text = ' '.join([word for word in text.split() if word not in stop_words])
-        return text
-    return ''  # Return an empty string for non-string values
-
-# Apply preprocessing to the 'input' column in each dataset
-org_data['note_txt'] = org_data['note_txt'].apply(preprocess_text)
-
-##########Step 3: Pre-processing notes: Note cleaning ##################################################
-def clean_text(text):
-    # Remove specific names like "b. miller md" or "j. doe phd"
-    text = re.sub(r'\b[A-Z]\.\s*[a-z]+\s+[a-z]+\s*(?:md|phd|dr|prof|mr|mrs|ms|sir|esq)\b', '[NAME]', text, flags=re.IGNORECASE)
-    
-    # Replace sequences of digits (assuming MRNs)
-    text = re.sub(r"\b\d{6,}\b", "[MRN]", text)
-    
-    # Remove specific unwanted characters (e.g., ÃƒÂ¿)
-    text = re.sub(r'ÃƒÂ¿', '', text)
-    text = re.sub(r'ã¿', '', text)
-    text = re.sub(r'y', '', text)
-    text = re.sub(r'o', '', text)
-    text = re.sub(r'b. miller md', '', text)
-
-    # Replace dates in MM/DD/YY format
-    text = re.sub(r'\b\d{1,2}/\d{1,2}/\d{2,4}\b', '[DATE]', text)
-    
-    # Remove doctor's names at the end of sentences
-    text = re.sub(r'\bdr\.\s*[a-zA-Z]+\s*\.$', '', text, flags=re.IGNORECASE)
-    
-    # Normalize text
-    text = text.lower().strip()
-    
-    # Remove special characters
-    text = re.sub(r"\*+", " ", text)   # Replace multiple asterisks with a space
-    text = re.sub(r'[\/\(\)]', '', text)  # Remove slashes and parentheses
-    text = re.sub(r'\s+', ' ', text).strip()  # Normalize whitespace
-
-    return text
-
-org_data['note_txt'] = org_data['note_txt'].apply(clean_text)
-# print(org_data['note_txt'])
-
-##########Step 4: # Convert data to HuggingFace Datasets ######################################
-columns_to_keep = ['MRN', 'note_txt']
-
-org_dataset = Dataset.from_pandas(org_data[columns_to_keep])
-
-
-# Remove '__index_level_0__' from each dataset if it exists
-if "__index_level_0__" in org_dataset.column_names:
-    org_dataset = org_dataset.remove_columns("__index_level_0__")
-
-##########Step 5: Tokenize the notes ###################################################
-# Function to tokenize 'input_txt' and pass 'race' separately
-def tokenize_input(example):
-    # Tokenize the 'input_txt' (notes)
-    result = tokenizer(
-        example["note_txt"], truncation=True, max_length=512, padding="max_length"
-    )
-    
-    return result
-
-# Tokenize input and encode output for labeled datasets
-org_dataset = org_dataset.map(tokenize_input)
-
-# Ensure the datasets are in the correct format
-columns_to_return = ["MRN", "input_ids", "attention_mask"]
-org_dataset.set_format(type="torch", columns=columns_to_return)
-
-###########Step 6: Make DataLoaders to be in the model's format
-labeled_dataloader_test = DataLoader(org_dataset, batch_size=8, shuffle=False)
-
-###########Step 7: Model Execution and Prediction #######################################
-def print_trainable_parameters(model):
-    """
-    Prints the number of trainable parameters in the model.
-    """
-    trainable_params = 0
-    all_param = 0
-    for _, param in model.named_parameters():
-        all_param += param.numel()
-        if param.requires_grad:
-            trainable_params += param.numel()
-    print(
-        f"trainable params: {trainable_params} || all params: {all_param} || trainable%: {100 * trainable_params / all_param}"
-    )
-
-
-num_class=7
-# Check for GPU availability, use GPU if available, else CPU
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-print(f"Using device: {device}")
-
-# Define Hugging Face repo
-repo_id = "mousamoradi/SGANLLM"
-
-# Download the Generator Model's weights (state_dict)
-generator_model_path = hf_hub_download(repo_id=repo_id, filename="generator_multi_class.pt")
-# Download the Discriminator Model's weights (state_dict)
-discriminator_model_path = hf_hub_download(repo_id=repo_id, filename="discriminator_multi_class.pt")
-####################################### Apply PEFT for fine-tuning ##############################################
-config = LoraConfig(
-    r=64,
-    lora_alpha=128,   #default=2
-    bias="all",
-    lora_dropout=0.2,   #default=0.2
-    task_type="SEQ_CLS",
-    target_modules=[
-        "embedding",
-        "*.attention.q_lin",
-        "*.attention.k_lin",
-        "*.attention.v_lin",
-        "*.attention.out_lin",
-        "*.ffn.lin*",
-        "pre_classifier",
-        "classifier",
-    ],
-)
-
-model =  DistilBertForSequenceClassification.from_pretrained("medicalai/ClinicalBERT", num_labels=num_class, output_hidden_states=True)
-# Initialize the tokenizer
-print_trainable_parameters(model)
-
-# model = get_peft_model(model, config)
-# model.print_trainable_parameters()
-############################################ Define Descriminator and Generator #########################################
-class Discriminator(nn.Module):
-    def __init__(self, model, num_classes=num_class):
-        super(Discriminator, self).__init__()
-        self.bert = model
-        self.fc = nn.Linear(num_classes + 1, num_classes)
-
-    def forward(self, input_ids, attention_mask, embeddings=None):
-        if embeddings is None:
-            embeddings = self.bert.get_input_embeddings()(input_ids)
-        
-        # Forward pass through the BERT model with the embeddings
-        outputs = self.bert(inputs_embeds=embeddings, attention_mask=attention_mask)
-        logits = outputs.logits
-
-        return logits
-
-    def get_embeddings(self, input_ids):
-        return self.bert.get_input_embeddings()(input_ids)
-
-# Generator: Use a language model like BERT for generating text based on input
-class Generator(nn.Module):
-    def __init__(self, model):
-        super(Generator, self).__init__()
-        self.bert = model  # Use DistilBertForSequenceClassification
-    
-    def forward(self, input_ids, attention_mask=None):
-        outputs = self.bert(input_ids=input_ids, attention_mask=attention_mask)
-        return outputs[0]  # The first element of the output tuple is the logits
-
-############################################# Training parameters ##########################################
-# Initialize generator and discriminator models and move them to the selected device (GPU or CPU)
-generator = Generator(model).to(device)
-discriminator = Discriminator(model, num_classes=num_class).to(device)
-batch_size =8
-
-generator.load_state_dict(torch.load(generator_model_path, map_location=device, weights_only=False))
-discriminator.load_state_dict(torch.load(discriminator_model_path, map_location=device, weights_only=False))
-
-
-# Ensure the models are in evaluation mode
-generator.eval()
-discriminator.eval()
-
-print("Models downloaded and loaded successfully!")
-
-# Convert test dataset to lists for consistent indexing
-input_txt_list = list(org_dataset['note_txt'])  # Note texts
-mrn_list = list(map(int, org_dataset['MRN']))  # Convert MRN to int
-
-# Initialize list to store predictions
-predicted_labels = []
-predicted_probs = []
-
-# Ensure to move the batch data to the correct device (GPU or CPU)
-with torch.no_grad():
-    for batch_idx, batch in enumerate(labeled_dataloader_test):
-        input_ids = batch['input_ids'].to(device)
-        attention_mask = batch['attention_mask'].to(device)
-
-        # Get model predictions
-        outputs = discriminator(input_ids, attention_mask=attention_mask)
-        preds = torch.softmax(outputs, dim=-1).cpu().numpy()  # Softmax output for multi-class
-
-        # Retrieve batch indices
-        batch_start = batch_idx * batch_size
-        batch_end = batch_start + len(batch['input_ids'])  # Adjust for last batch size
-
-        # Assign predicted labels as integers
-        for i, idx in enumerate(range(batch_start, batch_end)):
-            pred_label = int(np.argmax(preds[i]))
-            predicted_labels.append(pred_label)
-            predicted_probs.append(preds[i])  # store the full softmax probability vector
-
-# Create DataFrame with integer values
-result_df = pd.DataFrame({
-    'MRN': mrn_list,  # Already converted to int
-    'note_txt': input_txt_list,
-    'predicted_label': predicted_labels  # Stored as int
-})
-
-label_map = {
-    0: 'Non-GL',
-    1: 'POAG',
-    2: 'POAS',
-    3: 'PACG',
-    4: 'XFG',
-    5: 'PDG',
-    6: 'SGL'
+# HuggingFace Hub Configuration
+HF_REPO_ID = "mousamoradi/Ci-SSGAN"
+MODEL_FILES = {
+    '25p': 'ci_ssgan_25p.pth',   # 25% labeled data model - better generalization
+    '100p': 'ci_ssgan_100p.pth'  # 100% labeled data model - best performance
 }
 
-# Add a column for the class name
-result_df["predicted_class"] = result_df["predicted_label"].map(label_map)
-# Convert the list of probability vectors to a numpy array
-probs_array = np.array(predicted_probs)
+# Class names mapping
+CLASS_NAMES = ['Non-GL', 'OAG/S', 'ACG/S', 'XFG/S', 'PDG/S', 'SGL']
 
-# Prepare column names for each class's probability
-prob_cols = [f'prob_class_{i}' for i in range(probs_array.shape[1])]
-for i, col in enumerate(prob_cols):
-    result_df[col] = probs_array[:, i]
+# Create cache directory for downloaded models
+CACHE_DIR = os.path.join(os.path.expanduser("~"), ".cache", "ci_ssgan")
+os.makedirs(CACHE_DIR, exist_ok=True)
+
+# ============================================================================
+# MODEL DEFINITIONS (Minimal for inference)
+# ============================================================================
+
+class TextEncoder(nn.Module):
+    def __init__(self, model_name='emilyalsentzer/Bio_ClinicalBERT', hidden_dim=768, dropout=0.3):
+        super().__init__()
+        self.bert = AutoModel.from_pretrained(model_name)
+        self.dropout = nn.Dropout(dropout)
+        self.attention_pool = nn.Sequential(
+            nn.Linear(hidden_dim, 768),
+            nn.Tanh(),
+            nn.Dropout(0.1),
+            nn.Linear(768, 1)
+        )
+    
+    def forward(self, input_ids, attention_mask):
+        outputs = self.bert(input_ids=input_ids, attention_mask=attention_mask)
+        last_hidden = outputs.last_hidden_state
+        attention_weights = self.attention_pool(last_hidden).squeeze(-1)
+        attention_weights = F.softmax(attention_weights * attention_mask, dim=1)
+        pooled_output = torch.sum(last_hidden * attention_weights.unsqueeze(-1), dim=1)
+        return self.dropout(pooled_output)
+
+class ClinicallyInformedGenerator(nn.Module):
+    def __init__(self, noise_dim=100, demographic_dim=3, text_embed_dim=768, hidden_dims=[1024, 768]):
+        super().__init__()
+        layers = []
+        input_dim = noise_dim + demographic_dim + text_embed_dim
         
-# Print final dataset to verify results
-result_df
-# Optionally save the final results
-# result_df.to_csv(".../LLM_multi_class_predictions.csv", index=False)
+        for hidden_dim in hidden_dims:
+            layers.extend([
+                nn.Linear(input_dim, hidden_dim),
+                nn.BatchNorm1d(hidden_dim),
+                nn.LeakyReLU(0.2, inplace=True),
+                nn.Dropout(0.2)
+            ])
+            input_dim = hidden_dim
+        
+        layers.append(nn.Linear(input_dim, text_embed_dim))
+        layers.append(nn.Tanh())
+        self.generator = nn.Sequential(*layers)
+        
+    def forward(self, noise, demographics, unlabeled_text_embeddings):
+        x = torch.cat([noise, demographics, unlabeled_text_embeddings], dim=1)
+        return self.generator(x)
+
+class Discriminator(nn.Module):
+    def __init__(self, text_embed_dim=768, demographic_dim=3, num_classes=6, hidden_dims=[512, 256]):
+        super().__init__()
+        layers = []
+        input_dim = text_embed_dim + demographic_dim
+        
+        for hidden_dim in hidden_dims:
+            layers.extend([
+                nn.Linear(input_dim, hidden_dim),
+                nn.LeakyReLU(0.2, inplace=True),
+                nn.Dropout(0.3)
+            ])
+            input_dim = hidden_dim
+        
+        self.feature_extractor = nn.Sequential(*layers)
+        self.classifier = nn.Linear(input_dim, num_classes)
+        self.source_classifier = nn.Linear(input_dim, 1)
+        
+    def forward(self, text_embeddings, demographics):
+        x = torch.cat([text_embeddings, demographics], dim=1)
+        features = self.feature_extractor(x)
+        class_logits = self.classifier(features)
+        source_logits = self.source_classifier(features)
+        return class_logits, source_logits, features
+
+# ============================================================================
+# DATASET CLASS
+# ============================================================================
+
+class InferenceDataset(Dataset):
+    def __init__(self, texts, demographics, tokenizer, max_length=512):
+        self.texts = texts
+        self.demographics = demographics
+        self.tokenizer = tokenizer
+        self.max_length = max_length
+        
+    def __len__(self):
+        return len(self.texts)
+    
+    def __getitem__(self, idx):
+        text = str(self.texts[idx])
+        encoding = self.tokenizer(
+            text,
+            truncation=True,
+            padding='max_length',
+            max_length=self.max_length,
+            return_tensors='pt'
+        )
+        
+        return {
+            'input_ids': encoding['input_ids'].flatten(),
+            'attention_mask': encoding['attention_mask'].flatten(),
+            'demographics': torch.tensor(self.demographics[idx], dtype=torch.float32)
+        }
+
+# ============================================================================
+# MODEL DOWNLOADING AND LOADING
+# ============================================================================
+
+def download_model_from_hub(model_variant='100p'):
+    """Download model from HuggingFace Hub if not cached"""
+    if model_variant not in MODEL_FILES:
+        raise ValueError(f"Invalid model variant. Choose from: {list(MODEL_FILES.keys())}")
+    
+    model_filename = MODEL_FILES[model_variant]
+    local_path = os.path.join(CACHE_DIR, model_filename)
+    
+    # Check if already downloaded
+    if os.path.exists(local_path):
+        print(f"✅ Using cached model: {local_path}")
+        return local_path
+    
+    print(f"   Downloading {model_variant} model from HuggingFace Hub...")
+    print(f"   Repository: {HF_REPO_ID}")
+    print(f"   File: {model_filename}")
+    
+    try:
+        # Download from HuggingFace Hub
+        downloaded_path = hf_hub_download(
+            repo_id=HF_REPO_ID,
+            filename=model_filename,
+            cache_dir=CACHE_DIR,
+            local_dir=CACHE_DIR
+        )
+        print(f"✅ Model downloaded successfully")
+        return downloaded_path
+    except Exception as e:
+        print(f"❌ Error downloading model: {e}")
+        print(f"   Please check your internet connection or the repository: {HF_REPO_ID}")
+        raise
+
+def load_ci_ssgan_model(model_variant='100p', device=None):
+    """Load Ci-SSGAN model from HuggingFace Hub"""
+    if device is None:
+        device = DEVICE
+    
+    # Download model if needed
+    model_path = download_model_from_hub(model_variant)
+    
+    print(f"🔧 Loading Ci-SSGAN {model_variant} model...")
+    
+    # Load checkpoint
+    checkpoint = torch.load(model_path, map_location=device, weights_only=False)
+    
+    # Initialize models
+    text_encoder = TextEncoder('emilyalsentzer/Bio_ClinicalBERT').to(device)
+    generator = ClinicallyInformedGenerator().to(device)
+    discriminator = Discriminator().to(device)
+    
+    # Function to clean state dict keys (remove _orig_mod. prefix from compiled models)
+    def clean_state_dict(state_dict):
+        new_state_dict = {}
+        for key, value in state_dict.items():
+            if key.startswith('_orig_mod.'):
+                new_key = key[10:]
+            else:
+                new_key = key
+            new_state_dict[new_key] = value
+        return new_state_dict
+    
+    # Load state dicts with cleaning
+    text_encoder_state = clean_state_dict(checkpoint['text_encoder_state_dict'])
+    generator_state = clean_state_dict(checkpoint['generator_state_dict'])
+    discriminator_state = clean_state_dict(checkpoint['discriminator_state_dict'])
+    
+    # Load the cleaned state dicts
+    text_encoder.load_state_dict(text_encoder_state, strict=False)
+    generator.load_state_dict(generator_state, strict=False)
+    discriminator.load_state_dict(discriminator_state, strict=False)
+    
+    # Set to eval mode
+    text_encoder.eval()
+    generator.eval()
+    discriminator.eval()
+    
+    print(f"✅ Model loaded successfully")
+    
+    return text_encoder, discriminator
+
+# ============================================================================
+# DATA PREPARATION
+# ============================================================================
+
+def prepare_input_data(df):
+    """Prepare input data with flexible demographic handling"""
+    print("\n📋 Checking input data...")
+    
+    # Check for mandatory columns
+    if 'MRN' not in df.columns:
+        raise ValueError("❌ 'MRN' column is required")
+    
+    if 'input_txt' not in df.columns:
+        raise ValueError("❌ 'input_txt' column is required")
+    
+    print(f"✅ Found {len(df)} samples")
+    
+    # Handle demographics - use if available, otherwise use defaults
+    demographics = []
+    has_demographics = all(col in df.columns for col in ['age', 'race', 'gender'])
+    
+    if has_demographics:
+        print("✅ Demographics found (age, race, gender) - using for improved predictions")
+        for _, row in df.iterrows():
+            age_norm = float(row['age']) / 100.0 if pd.notna(row['age']) else 0.5
+            race = float(row['race']) if pd.notna(row['race']) else 0.0
+            gender = float(row['gender']) if pd.notna(row['gender']) else 0.0
+            demographics.append([race, gender, age_norm])
+    else:
+        missing = [col for col in ['age', 'race', 'gender'] if col not in df.columns]
+        print(f"⚠️  Demographics not found ({', '.join(missing)}) - using default values")
+        print("   Note: Providing demographics may improve prediction accuracy")
+        # Use default middle values for missing demographics
+        default_demo = [0.0, 0.5, 0.5]  # race=0, gender=0.5, age_norm=0.5
+        demographics = [default_demo for _ in range(len(df))]
+    
+    # Check for optional note_id
+    if 'note_id' in df.columns:
+        print("✅ note_id column found")
+    
+    return np.array(demographics)
+
+def perform_inference(test_df, text_encoder, discriminator, tokenizer, device, batch_size=16):
+    """Perform inference on the data"""
+    
+    # Prepare demographics
+    demographics = prepare_input_data(test_df)
+    
+    print(f"\nRunning inference on {len(test_df)} samples...")
+    
+    # Create dataset and dataloader
+    test_dataset = InferenceDataset(
+        test_df['input_txt'].values,
+        demographics,
+        tokenizer,
+        max_length=MAX_SEQ_LENGTH
+    )
+    
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=0)
+    
+    # Inference
+    all_preds = []
+    all_probs = []
+    
+    with torch.no_grad():
+        for batch in tqdm(test_loader, desc='Processing'):
+            # Move to device
+            input_ids = batch['input_ids'].to(device)
+            attention_mask = batch['attention_mask'].to(device)
+            demographics = batch['demographics'].to(device)
+            
+            # Get text embeddings
+            text_emb = text_encoder(input_ids, attention_mask)
+            
+            # Get predictions
+            class_logits, _, _ = discriminator(text_emb, demographics)
+            
+            # Convert to probabilities and predictions
+            probs = F.softmax(class_logits, dim=1)
+            preds = torch.argmax(class_logits, dim=1)
+            
+            all_preds.extend(preds.cpu().numpy())
+            all_probs.extend(probs.cpu().numpy())
+    
+    return np.array(all_preds), np.array(all_probs)
+
+# ============================================================================
+# MAIN INFERENCE FUNCTION
+# ============================================================================
+
+def run_inference(test_data, model_variant='100p', save_to_csv=None):
+    """
+    Main inference function for CI-SSGAN
+    
+    Args:
+        test_data: DataFrame with minimum columns 'MRN' and 'note_txt'
+                  Optional columns: 'age', 'race', 'gender', 'note_id'
+        model_variant: '25p' or '100p' (default: '100p')
+            - '25p': Better generalization for different clinical domains
+            - '100p': Best performance on similar data
+        save_to_csv: Optional path to save results as CSV
+    
+    Returns:
+        results_df: DataFrame with predictions and probabilities
+    """
+    
+    print("="*70)
+    print("CI-SSGAN INFERENCE")
+    print("="*70)
+    print(f"Model: {model_variant}")
+    print(f"Device: {DEVICE}")
+    print(f"Input shape: {test_data.shape}")
+    print(f"Input columns: {list(test_data.columns)}")
+    
+    # Initialize tokenizer
+    print("\nLoading tokenizer...")
+    tokenizer = AutoTokenizer.from_pretrained('emilyalsentzer/Bio_ClinicalBERT')
+    
+    # Load model from HuggingFace Hub
+    text_encoder, discriminator = load_ci_ssgan_model(model_variant, DEVICE)
+    
+    # Run inference
+    predictions, probabilities = perform_inference(
+        test_data, text_encoder, discriminator, tokenizer, DEVICE, BATCH_SIZE
+    )
+    
+    # Create results dataframe with required columns
+    results_df = pd.DataFrame()
+    
+    # Add mandatory columns
+    results_df['MRN'] = test_data['MRN'].values
+    results_df['input_txt'] = test_data['input_txt'].values
+    
+    # Add optional columns if they exist in input
+    optional_cols = ['note_id', 'race', 'gender', 'age']
+    for col in optional_cols:
+        if col in test_data.columns:
+            results_df[col] = test_data[col].values
+    
+    # Add predictions
+    results_df['predicted_subtype'] = [CLASS_NAMES[pred] for pred in predictions]
+    results_df['Probability'] = np.max(probabilities, axis=1)
+    
+    # Add detailed probabilities for each class
+    for i, class_name in enumerate(CLASS_NAMES):
+        results_df[f'prob_{class_name}'] = probabilities[:, i]
+    
+    print(f"\n✅ Inference complete!")
+    print(f"Results shape: {results_df.shape}")
+    print(f"Output columns: {list(results_df.columns)}")
+    
+    # Show prediction distribution
+    print("\nPrediction Distribution:")
+    pred_counts = results_df['predicted_subtype'].value_counts()
+    for subtype in CLASS_NAMES:
+        if subtype in pred_counts.index:
+            count = pred_counts[subtype]
+            pct = 100 * count / len(results_df)
+            print(f"  {subtype:8s}: {count:5d} ({pct:5.1f}%)")
+        else:
+            print(f"  {subtype:8s}: 0 (0.0%)")
+    
+    # Show confidence statistics
+    print(f"\nConfidence Statistics:")
+    print(f"  Mean: {results_df['Probability'].mean():.3f}")
+    print(f"  Std:  {results_df['Probability'].std():.3f}")
+    print(f"  Min:  {results_df['Probability'].min():.3f}")
+    print(f"  Max:  {results_df['Probability'].max():.3f}")
+    
+    # Save if requested
+    if save_to_csv:
+        results_df.to_csv(save_to_csv, index=False)
+        print(f"\n💾 Results saved to: {save_to_csv}")
+    
+    return results_df
+
+# ============================================================================
+# HELPER FUNCTIONS
+# ============================================================================
+
+def clear_cache():
+    """Clear downloaded model cache"""
+    import shutil
+    if os.path.exists(CACHE_DIR):
+        shutil.rmtree(CACHE_DIR)
+        os.makedirs(CACHE_DIR, exist_ok=True)
+        print(f"✅ Cache cleared: {CACHE_DIR}")
+    else:
+        print("ℹ️ Cache directory doesn't exist")
+
+def get_high_confidence_predictions(results_df, threshold=0.8):
+    """Get only high confidence predictions"""
+    high_conf = results_df[results_df['Probability'] >= threshold].copy()
+    print(f"High confidence predictions (>={threshold:.1%}): {len(high_conf)}/{len(results_df)}")
+    return high_conf
+
+def save_predictions_by_subtype(results_df, output_dir='predictions_by_subtype'):
+    """Save predictions grouped by subtype"""
+    os.makedirs(output_dir, exist_ok=True)
+    
+    for subtype in CLASS_NAMES:
+        subtype_df = results_df[results_df['predicted_subtype'] == subtype]
+        if len(subtype_df) > 0:
+            filename = os.path.join(output_dir, f"{subtype.replace('/', '_')}_predictions.csv")
+            subtype_df.to_csv(filename, index=False)
+            print(f"Saved {len(subtype_df)} {subtype} predictions to {filename}")
+
+# ============================================================================
+# USAGE EXAMPLES
+# ============================================================================
+
+print("\n" + "="*70)
+print("CI-SSGAN INFERENCE MODULE READY")
+print("="*70)
+print(f"Device: {DEVICE}")
+print(f"Models available: 25p (better generalization), 100p (best performance)")
+print(f"Cache directory: {CACHE_DIR}")
+
+print("\nUSAGE EXAMPLES:")
+print("-"*70)
+
+print("\n1️⃣ Basic inference (100p model):")
+print("   results = run_inference(test_data)")
+
+print("\n2️⃣ Use 25p model for different clinical domains:")
+print("   results = run_inference(test_data, model_variant='25p')")
+
+print("\n3️⃣ Save results to CSV:")
+print("   results = run_inference(test_data, save_to_csv='predictions.csv')")
+
+print("\n4️⃣ Get high confidence predictions:")
+print("   high_conf = get_high_confidence_predictions(results, threshold=0.9)")
+
+print("\n5️⃣ Save predictions by subtype:")
+print("   save_predictions_by_subtype(results)")
+
+print("\n6️⃣ Clear model cache:")
+print("   clear_cache()")
+
+print("\n" + "="*70)
+print("REQUIRED COLUMNS: 'MRN', 'input_txt'")
+print("OPTIONAL COLUMNS: 'age', 'race', 'gender', 'note_id'")
+print("OUTPUT COLUMNS: 'MRN', 'input_txt', 'predicted_subtype', 'Probability'")
+print("                   + any optional columns provided in input")
+print("                   + detailed probabilities for each class")
+print("="*70 + "\n")
+
+# Example call (replace 'test_data' with your DataFrame):
+results = run_inference(test_set, model_variant='25p')
