@@ -13,7 +13,7 @@ This repository focuses on detecting glaucoma subtypes from unstructured clinica
 
 We provide two pre-trained Ci-SSGAN models:
 
-| Model | Training Data | Best For | Performance |
+| Model | Training Data | Best For | Validated performance |
 |-------|--------------|----------|-------------|
 | `ci_ssgan_25p` | 25% labeled | Different clinical domains, better generalization | F1: 0.88 |
 | `ci_ssgan_100p` | 100% labeled | Maximum performance, similar domains | F1: 0.91 |
@@ -38,3 +38,35 @@ Users should ensure they have all the necessary libraries and dependencies insta
 1) Model execution utilizes six input columns: ['MRN', 'note_id', 'note_txt', 'race', 'gender', 'age']. The minimum requirement consists of two mandatory columns: "MRN" and "note_txt". Column renaming is necessary if your dataset employs alternative naming conventions.
 
 2) Download or copy the code from the "Python Code" into your environment. When executed, the code will automatically download the trained model weights and generate predictions for the notes.
+3) 
+## Installation Section:
+## Installation
+
+### Requirements
+- Python 3.8+
+- PyTorch 2.0+
+- CUDA 11.7+ (for GPU support, optional)
+
+### Install via pip
+git clone https://github.com/yourusername/Ci-SSGAN.git
+cd Ci-SSGAN
+pip install -r requirements.txt
+
+## Quick Start
+# Install requirements
+pip install -r requirements.txt
+
+# Basic usage
+from ci_ssgan_inference import CiSSGANPredictor
+
+# Load model (automatically downloads weights on first run)
+predictor = CiSSGANPredictor(model_variant='100p')  # or '25p'
+
+# Prepare your data
+import pandas as pd
+data = pd.read_csv('your_clinical_notes.csv')
+# Minimum columns required: 'MRN', 'note_txt'
+
+# Get predictions
+predictions = predictor.predict(data)
+print(predictions[['MRN', 'predicted_class', 'confidence']])
