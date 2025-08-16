@@ -92,5 +92,5 @@ print(results[['MRN', 'predicted_subtype', 'Probability', 'prob_{class}']])
 This project is licensed under the MIT License - see [LICENSE](LICENSE) file for details.
 
 **Contact**
-- **Issues**: Please open a GitHub issue for bugs or questions
-- **Email**: mmoradi2@meei.harvard.edu
+- Issues: Please open a GitHub issue for bugs or questions
+- Email: mmoradi2@meei.harvard.edu
