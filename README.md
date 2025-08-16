@@ -67,21 +67,21 @@ cd Ci-SSGAN
 pip install -r requirements.txt
 
 ## Quick Start
-```python
-# Install requirements
-pip install -r requirements.txt
-
-# Basic usage
-from ci_ssgan_inference import CiSSGANPredictor
-
-# Load model (automatically downloads weights on first run)
-predictor = run_inference(test_data, model_variant='100p')  # or '25p'
-
-# Prepare your data
 import pandas as pd
-data = pd.read_csv('your_clinical_notes.csv')
-# Minimum columns required: 'MRN', 'input_txt'
+from ci_ssgan_inference import run_inference
 
-# Get predictions
-predictions = predictor.predict(data)
-print(predictions[['MRN', 'predicted_subtype', 'Probability']])
+# Load your data
+test_data = pd.read_csv('your_clinical_notes.csv')
+# Minimum required columns: 'MRN', 'input_txt'
+
+# Run inference with 100p model (best performance)
+results = run_inference(test_data, model_variant='100p')
+
+# Or use 25p model for different clinical domains
+results = run_inference(test_data, model_variant='25p')
+
+# Save results to CSV
+results = run_inference(test_data, model_variant='100p', save_to_csv='predictions.csv')
+
+# View results
+print(results[['MRN', 'predicted_subtype', 'Probability', 'prob_{class}']])
