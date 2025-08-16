@@ -3,9 +3,9 @@ This repository focuses on detecting glaucoma subtypes from unstructured clinica
 
 The model identifies 6 glaucoma subtypes from clinical notes:
 
-| Class | Label | Description | Clinical Significance |
-|-------|-------|-------------|----------------------|
-| 0 | Non-GL | Non-glaucoma | No glaucoma detected |
+| Class | Label | Description | 
+|-------|-------|-------------|
+| 0 | Non-GL | Non-glaucoma | 
 | 1 | OAG/S | Open-angle glaucoma/suspect | 
 | 2 | ACG/S | Angle-closure glaucoma/suspect |
 | 3 | XFG/S | Exfoliation glaucoma/syndrome |
