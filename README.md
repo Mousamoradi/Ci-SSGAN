@@ -51,7 +51,7 @@ Users should ensure they have all the necessary libraries and dependencies insta
 
 1) Model execution utilizes six input columns: ['MRN', 'note_id', 'input_txt', 'race', 'gender', 'age']. The minimum requirement consists of two mandatory columns: "MRN" and "input_txt". Column renaming is necessary if your dataset employs alternative naming conventions.
 
-2) Download or copy the code from the "Python Code" into your environment. When executed, the code will automatically download the trained model weights and generate predictions for the notes.
+2) Download or copy `cissgan.py` into your environment. When executed, the code will automatically download the trained model weights and generate predictions for the notes.
 
 ### ** Installation:**
 ```markdown
@@ -68,7 +68,7 @@ pip install -r requirements.txt
 
 ## Quick Start
 import pandas as pd
-from ci_ssgan_inference import run_inference
+from cissgan import run_inference
 
 # Load your data
 test_data = pd.read_csv('your_clinical_notes.csv')
