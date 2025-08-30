@@ -489,14 +489,4 @@ print("="*70 + "\n")
 results = run_inference(test_data, model_variant='25p')  # Or change to 100p
 
 
-# In[5]:
-
-
-get_ipython().system('jupyter nbconvert --to python "cissgan.ipynb" --output "cissgan.py"')
-
-
-# In[ ]:
-
-
-
 
