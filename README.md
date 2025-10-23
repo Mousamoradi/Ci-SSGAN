@@ -95,7 +95,7 @@ This project is licensed under the MIT License - see "LICENSE" file for details.
 - Issues: Please open a GitHub issue for bugs or questions
 - Email: mmoradi2@meei.harvard.edu
 ```
-# 📃 Citation
+# 🧾 Citation
 If you find this project helpful in your research, please cite the following paper:
 
 --TBD--
