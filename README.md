@@ -1,7 +1,7 @@
 # Ci-SSGAN
 This repository focuses on detecting glaucoma subtypes from unstructured clinical notes using a Clinically-informed Semi-Supervised Generative Adversarial Network (Ci-SSGAN) and a Large Language Model (LLM) to improve diagnostic accuracy and fairness in ophthalmic AI. 
 
-📌 Key Features
+* 📌 Key Features:
 
 1- Equity-driven design: Ci-SSGAN integrates demographic conditioning and a fairness-aware loss (PV metric) to promote balanced performance across race, gender, and age groups, mitigating disparities commonly seen in clinical AI.
 
