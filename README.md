@@ -27,13 +27,13 @@ Two pre-trained Ci-SSGAN models are available to accommodate different clinical 
 | `ci_ssgan_25p` | 25% labeled | Different clinical domains, better generalization | AUROC= 0.97, F1 macro= 0.88 |
 | `ci_ssgan_100p` | 100% labeled | Maximum performance, similar domains | AUROC= 0.99, F1 macro= 0.91 |
 
-### Model selection guidance:
+### ⚙️ Model selection guidance:
 - **Not sure?** Start with `100p` model
 - **Different hospital/EHR?** Try `25p` model  
 - **Small inference dataset?** Either model works (both handle any size)
 
   
-## Workflow
+## 🔄 Workflow
 1. **Data Loading**: Load CSV/DataFrame with clinical notes (minimum: MRN, input_txt)
 2. **Model Download**: Pre-trained Ci-SSGAN weights (text encoder, generator, discriminator) automatically downloaded from HuggingFace Hub
 3. **Tokenization**: Bio-ClinicalBERT tokenizer processes text (truncation, padding to 512 tokens)
@@ -41,7 +41,7 @@ Two pre-trained Ci-SSGAN models are available to accommodate different clinical 
 5. **Prediction**: Discriminator classifies embeddings into 6 glaucoma subtypes using softmax
 6. **Output**: Returns DataFrame with predicted subtype and confidence scores for each patient
 
-### Input Format
+### 📥 Input Format
 Your data should be a CSV/DataFrame with the following columns:
 
 | Column | Required | Type | Description | Example |
@@ -54,14 +54,14 @@ Your data should be a CSV/DataFrame with the following columns:
 | age | Optional | Float | Age in years | 65.5 |
 **Note:** Demographics (age, race, gender) are optional but may improve prediction accuracy if provided.
 
-# How to execute the model:
+# ▶️ How to execute the model:
 Users should ensure they have all the necessary libraries and dependencies installed, as specified in the "Requirements". Once intalled, the code can be executed in two easy steps:
 
 1) Model execution utilizes six input columns: ['MRN', 'note_id', 'input_txt', 'race', 'gender', 'age']. The minimum requirement consists of two mandatory columns: "MRN" and "input_txt". Column renaming is necessary if your dataset employs alternative naming conventions.
 
 2) Download or copy `ci_ssgan_inference.py` into your environment. When executed, the code will automatically download the trained model weights and generate predictions for the notes.
 
-### ** Installation:**
+### ** 🔧 Installation:**
 ```markdown
 ### Requirements
 - Python 3.8+
