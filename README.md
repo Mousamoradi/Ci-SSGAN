@@ -1,5 +1,5 @@
 # Ci-SSGAN
-This repository focuses on detecting glaucoma subtypes from unstructured clinical notes using a clinically-informed semi-Supervised Generative Adversarial Network (Ci-SSGAN) and a Large Language Model. 
+This repository focuses on detecting glaucoma subtypes from unstructured clinical notes using a Clinically-informed Semi-Supervised Generative Adversarial Network (Ci-SSGAN) and a Large Language Model. 
 
 The model identifies 6 glaucoma subtypes from clinical notes:
 
